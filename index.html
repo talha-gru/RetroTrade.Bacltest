@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>retrotrade Lab - Elite Trading Platform & AI Backtest Suite</title>
+    
+    <!-- Core Libraries: Local vendor with CDN fallbacks -->
+    <script src="vendor/tailwind.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        neon: {
+                            green: '#00ff66',
+                            glow: 'rgba(0, 255, 102, 0.35)'
+                        },
+                        charcoal: {
+                            950: '#0d0f13',
+                            900: '#111318',
+                            850: '#15181e',
+                            800: '#1a1d24',
+                            700: '#232832',
+                            600: '#2d3340'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="vendor/lucide.min.js"></script>
+    <script>if (!window.lucide) document.write('<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"><\\/script>');</script>
+    <script src="vendor/lightweight-charts.standalone.production.js"></script>
+    <script>if (!window.LightweightCharts) document.write('<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"><\\/script>');</script>
+
+    <!-- Custom Theme Stylesheet -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-[#111318] text-gray-300 min-h-screen flex flex-col font-sans selection:bg-[#00ff66]/30 selection:text-[#00ff66] overflow-x-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="bg-[#15181e] border-b border-[#232830] px-4 py-2 flex items-center justify-between sticky top-0 z-40">
+        <!-- Left: Brand Logo & Integrated Candlestick Icon -->
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-lg bg-[#1a1d24] border border-[#282f3a] flex items-center justify-center shadow-inner relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-tr from-[#00ff66]/15 to-transparent"></div>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" class="relative z-10">
+                    <line x1="7" y1="3" x2="7" y2="21" stroke="#00ff66" stroke-width="1.5" stroke-linecap="round"/>
+                    <rect x="5" y="7" width="4" height="8" rx="1" fill="#00ff66"/>
+                    <line x1="16" y1="5" x2="16" y2="19" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+                    <rect x="14" y="9" width="4" height="6" rx="1" fill="#ffffff"/>
+                </svg>
+            </div>
+
+            <!-- Brand Typography -->
+            <div class="flex flex-col">
+                <div class="flex items-center leading-none">
+                    <span class="text-xl brand-retro">retro</span><span class="text-xl brand-trade">trade</span>
+                </div>
+                <div class="flex items-center space-x-1.5 mt-0.5">
+                    <span class="brand-lab">LAB</span>
+                    <span class="text-[9px] text-gray-400 font-mono tracking-wider uppercase">Pro Terminal</span>
+                </div>
+            </div>
+
+            <!-- Mode Switcher: Replay vs Live Market Dual Mode -->
+            <div class="hidden sm:flex items-center bg-[#101216] p-1 rounded-lg border border-[#232830] ml-3 space-x-1">
+                <button id="btn-mode-replay" class="flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-bold bg-[#00ff66] text-black shadow-md shadow-[#00ff66]/20 transition">
+                    <i data-lucide="rewind" class="w-3.5 h-3.5 fill-current"></i>
+                    <span>Replay Mode</span>
+                </button>
+                <button id="btn-mode-live" class="flex items-center space-x-1.5 px-3 py-1 rounded-md text-xs font-semibold text-gray-400 hover:text-white bg-transparent transition">
+                    <span id="live-feed-pulse" class="w-2 h-2 rounded-full bg-amber-400 mr-0.5"></span>
+                    <span>Live Market</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Center: Active Pair & HUD Bar -->
+        <div class="flex items-center space-x-3">
+            <!-- Active Asset Selector Trigger -->
+            <button id="btn-open-asset-modal" class="flex items-center space-x-2 bg-[#121418] hover:bg-[#1a1e25] border border-[#262c36] hover:border-[#00ff66]/40 px-3 py-1.5 rounded-lg transition cursor-pointer">
+                <span id="active-category-badge" class="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/15 text-amber-300 border border-amber-500/30">
+                    COMMODITIES
+                </span>
+                <span id="active-symbol-text" class="text-xs font-bold font-mono text-white tracking-wide">XAU/USD</span>
+                <i data-lucide="chevron-down" class="w-3.5 h-3.5 text-gray-400"></i>
+            </button>
+
+            <!-- Quick HUD OHLCV Bar -->
+            <div class="hidden xl:flex items-center space-x-3.5 bg-[#101216] border border-[#232830] px-3.5 py-1 rounded-lg text-xs font-mono">
+                <div class="flex items-center space-x-1 text-gray-400">
+                    <span>O:</span>
+                    <span id="hud-open" class="text-white font-bold">-</span>
+                </div>
+                <div class="flex items-center space-x-1 text-gray-400">
+                    <span>H:</span>
+                    <span id="hud-high" class="text-white font-bold">-</span>
+                </div>
+                <div class="flex items-center space-x-1 text-gray-400">
+                    <span>L:</span>
+                    <span id="hud-low" class="text-white font-bold">-</span>
+                </div>
+                <div class="flex items-center space-x-1 text-gray-400">
+                    <span>C:</span>
+                    <span id="hud-close" class="text-white font-bold">-</span>
+                </div>
+                <div class="border-l border-[#262c36] pl-2 flex items-center space-x-1">
+                    <span id="hud-change" class="text-[#00ff66] font-bold">0.00%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Header Actions -->
+        <div class="flex items-center space-x-2">
+            <!-- Account Equity Pill -->
+            <div class="flex items-center space-x-2 bg-[#1b1f26] border border-[#28303a] px-3 py-1 rounded-md">
+                <span class="live-pulse"></span>
+                <div class="flex flex-col text-right">
+                    <span class="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Equity</span>
+                    <span id="metric-equity" class="text-xs font-mono font-extrabold text-[#00ff66]">$10,000.00</span>
+                </div>
+            </div>
+
+            <!-- AI Copilot Button -->
+            <button id="btn-open-ai-panel" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600/30 to-[#00ff66]/20 border border-[#00ff66]/40 text-[#00ff66] hover:bg-[#00ff66]/20 font-bold text-xs transition shadow-sm">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-[#00ff66]"></i>
+                <span>AI Copilot</span>
+            </button>
+
+            <!-- Chart Customization Settings -->
+            <button id="btn-open-settings" data-tooltip="Chart Theme & Customizer" class="p-2 rounded-lg bg-[#1c2027] hover:bg-[#252b34] text-gray-300 border border-[#282f3a] transition">
+                <i data-lucide="sliders" class="w-4 h-4"></i>
+            </button>
+
+            <!-- Reset Account Balance -->
+            <button id="btn-reset-account" data-tooltip="Reset Balance" class="p-2 rounded-lg bg-[#1c2027] hover:bg-[#ff3344]/20 hover:text-[#ff3344] text-gray-400 border border-[#282f3a] transition">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- PLATFORM BODY: SIDEBAR + MAIN WORKSPACE -->
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- SIDEBAR NAVIGATION -->
+        <aside class="w-52 bg-[#13161c] border-r border-[#21262f] flex flex-col justify-between py-3 px-2 flex-shrink-0 select-none">
+            <div class="space-y-1">
+                <div class="px-3 pb-2 text-[10px] font-mono uppercase font-bold text-gray-500 tracking-wider">
+                    Navigation
+                </div>
+                <div class="sidebar-item" data-view="dashboard">
+                    <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                    <span>Dashboard</span>
+                </div>
+                <div class="sidebar-item active" data-view="backtest">
+                    <i data-lucide="history" class="w-4 h-4"></i>
+                    <span class="flex-1">Backtest Hub</span>
+                    <span id="current-mode-label" class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#00ff66]/15 text-[#00ff66]">REPLAY</span>
+                </div>
+                <div class="sidebar-item" data-view="analytics">
+                    <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                    <span>Analytics</span>
+                </div>
+                <div class="sidebar-item" data-view="reports">
+                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                    <span>Reports</span>
+                </div>
+                <div class="sidebar-item" data-view="trades">
+                    <i data-lucide="list-ordered" class="w-4 h-4"></i>
+                    <span>Trades</span>
+                </div>
+                <div class="sidebar-item" data-view="notebook">
+                    <i data-lucide="book-open" class="w-4 h-4"></i>
+                    <span>Notebook</span>
+                </div>
+                <div class="sidebar-item" data-view="community">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                    <span>Community</span>
+                </div>
+            </div>
+
+            <!-- Environment Status Card -->
+            <div class="pt-4 border-t border-[#20252e] px-1 space-y-2">
+                <div class="p-2.5 rounded-lg bg-[#181b22] border border-[#272d37]">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[11px] font-bold text-gray-300">Market Engine</span>
+                        <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-[#00ff66]/15 text-[#00ff66] border border-[#00ff66]/30">ACTIVE</span>
+                    </div>
+                    <p class="text-[10px] text-gray-500">Forex & Binance crypto streams loaded.</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN VIEW CONTAINER -->
+        <main class="flex-1 flex flex-col overflow-y-auto bg-[#111318]">
+
+            <!-- VIEW: BACKTEST & TRADING WORKSPACE -->
+            <div id="view-backtest" class="nav-view-panel flex-1 flex flex-col">
+                
+                <!-- TOP CHART TOOLBAR (Timeframes, Indicators, Tools, Snapshot, Fullscreen) -->
+                <div class="bg-[#16191f] border-b border-[#232830] px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    
+                    <!-- Left: Multi-Timeframe Toolbar -->
+                    <div class="flex items-center space-x-2">
+                        <span class="text-gray-400 font-mono text-[11px]">TF:</span>
+                        <div class="flex items-center bg-[#111318] p-0.5 rounded-lg border border-[#242932] space-x-0.5">
+                            <button data-tf="1m" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">1m</button>
+                            <button data-tf="5m" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">5m</button>
+                            <button data-tf="15m" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">15m</button>
+                            <button data-tf="1h" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold bg-[#00ff66]/15 text-[#00ff66] border border-[#00ff66]/40">1h</button>
+                            <button data-tf="2h" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">2h</button>
+                            <button data-tf="3h" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">3h</button>
+                            <button data-tf="4h" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">4h</button>
+                            <button data-tf="1D" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">1D</button>
+                            <button data-tf="Week" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">Week</button>
+                            <button data-tf="Month" class="chart-tf-btn px-2 py-0.5 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">Month</button>
+                        </div>
+                    </div>
+
+                    <!-- Center: Indicator Controls & Drawing Tools -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Indicators Menu Trigger -->
+                        <button id="btn-open-indicators" class="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-[#1a1d24] hover:bg-[#242933] border border-[#2b323e] text-gray-200 text-xs font-semibold transition">
+                            <i data-lucide="layers" class="w-3.5 h-3.5 text-[#00ff66]"></i>
+                            <span>Indicators & Sessions</span>
+                        </button>
+
+                        <!-- Drawing Tools Quick Bar -->
+                        <div class="flex items-center bg-[#111318] p-0.5 rounded-lg border border-[#242932] space-x-1">
+                            <button data-tool="cursor" data-tooltip="Cursor / Crosshair" class="drawing-tool-btn p-1.5 rounded bg-[#00ff66]/15 text-[#00ff66] border border-[#00ff66]/40 transition">
+                                <i data-lucide="mouse-pointer" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button data-tool="trendline" data-tooltip="Trendline" class="drawing-tool-btn p-1.5 rounded hover:bg-[#232832] text-gray-400 hover:text-white transition">
+                                <i data-lucide="trending-up" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button data-tool="horizontal" data-tooltip="Horizontal S/R Ray" class="drawing-tool-btn p-1.5 rounded hover:bg-[#232832] text-gray-400 hover:text-white transition">
+                                <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button data-tool="vertical" data-tooltip="Vertical Time Ray" class="drawing-tool-btn p-1.5 rounded hover:bg-[#232832] text-gray-400 hover:text-white transition">
+                                <i data-lucide="separator-vertical" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button data-tool="long_pos" data-tooltip="Long Position Forecast Block" class="drawing-tool-btn p-1.5 rounded hover:bg-[#232832] text-gray-400 hover:text-white transition">
+                                <i data-lucide="arrow-up-right" class="w-3.5 h-3.5 text-[#00ff66]"></i>
+                            </button>
+                            <button data-tool="short_pos" data-tooltip="Short Position Forecast Block" class="drawing-tool-btn p-1.5 rounded hover:bg-[#232832] text-gray-400 hover:text-white transition">
+                                <i data-lucide="arrow-down-right" class="w-3.5 h-3.5 text-[#ff3344]"></i>
+                            </button>
+                            <button data-tool="ruler" data-tooltip="Price Ruler / Measurement" class="drawing-tool-btn p-1.5 rounded hover:bg-[#232832] text-gray-400 hover:text-white transition">
+                                <i data-lucide="ruler" class="w-3.5 h-3.5"></i>
+                            </button>
+                            <button id="btn-clear-drawings" data-tooltip="Clear All Drawings" class="p-1.5 rounded hover:bg-[#ff3344]/20 text-gray-400 hover:text-[#ff3344] transition">
+                                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Right: Utilities (Snapshot & Fullscreen) -->
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-chart-snapshot" data-tooltip="Take High-Res Snapshot (PNG)" class="p-1.5 rounded bg-[#1a1d24] hover:bg-[#242933] text-gray-300 hover:text-white border border-[#2b323e] transition">
+                            <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button id="btn-chart-fullscreen" data-tooltip="Toggle Fullscreen (F)" class="p-1.5 rounded bg-[#1a1d24] hover:bg-[#242933] text-gray-300 hover:text-white border border-[#2b323e] transition">
+                            <i data-lucide="maximize" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- REPLAY ENGINE BAR (Active in Backtest Mode) -->
+                <div id="replay-control-bar" class="bg-[#14171d] border-b border-[#21262f] px-4 py-1.5 flex flex-wrap items-center justify-between gap-3 text-xs transition-opacity duration-200">
+                    <div class="flex items-center space-x-2">
+                        <div id="replay-status-badge" class="flex items-center text-[10px] font-mono px-2 py-0.5 rounded bg-[#111318] border border-[#232830]">
+                            <span class="w-2 h-2 rounded-full bg-gray-500 mr-1.5"></span>
+                            <span class="text-gray-400">PAUSED</span>
+                        </div>
+                        <button id="btn-replay-rewind" data-tooltip="Rewind to Start" class="p-1.5 rounded bg-[#1f242b] hover:bg-[#282f3a] text-gray-300 border border-[#2d3540] transition">
+                            <i data-lucide="skip-back" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button id="btn-replay-step-back" data-tooltip="Step Back 1 Bar (←)" class="p-1.5 rounded bg-[#1f242b] hover:bg-[#282f3a] text-gray-300 border border-[#2d3540] transition">
+                            <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button id="btn-replay-play" class="flex items-center space-x-1.5 px-3 py-1 rounded bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40 text-xs font-semibold hover:bg-[#00ff66]/30 transition shadow-sm">
+                            <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                            <span>Play</span>
+                        </button>
+                        <button id="btn-replay-step-fwd" data-tooltip="Step Forward 1 Bar (→)" class="p-1.5 rounded bg-[#1f242b] hover:bg-[#282f3a] text-gray-300 border border-[#2d3540] transition">
+                            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+
+                    <!-- Scrubber Timeline Slider -->
+                    <div class="flex-1 flex flex-col justify-center px-2 max-w-lg">
+                        <input id="replay-scrubber" type="range" min="20" max="800" value="120" class="retro-slider">
+                        <div class="flex justify-between text-[10px] text-gray-500 font-mono mt-0.5">
+                            <span id="replay-bar-counter">Bar 120 of 800</span>
+                            <span id="replay-time-display">2024-03-01 12:00 UTC</span>
+                        </div>
+                    </div>
+
+                    <!-- Speed Multipliers -->
+                    <div class="flex items-center space-x-1 bg-[#111318] p-0.5 rounded border border-[#232830]">
+                        <span class="text-[10px] text-gray-500 px-1 font-mono uppercase">Speed:</span>
+                        <button data-speed="0.25" class="speed-btn px-1.5 py-0.5 rounded text-xs font-mono text-gray-400 bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">0.25x</button>
+                        <button data-speed="0.5" class="speed-btn px-1.5 py-0.5 rounded text-xs font-mono text-gray-400 bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">0.5x</button>
+                        <button data-speed="1" class="speed-btn px-1.5 py-0.5 rounded text-xs font-mono font-bold bg-[#00ff66]/20 text-[#00ff66] border border-[#00ff66]/40">1x</button>
+                        <button data-speed="2" class="speed-btn px-1.5 py-0.5 rounded text-xs font-mono text-gray-400 bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">2x</button>
+                        <button data-speed="5" class="speed-btn px-1.5 py-0.5 rounded text-xs font-mono text-gray-400 bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">5x</button>
+                        <button data-speed="10" class="speed-btn px-1.5 py-0.5 rounded text-xs font-mono text-gray-400 bg-[#1a1e24] hover:bg-[#252b33] border border-transparent">10x</button>
+                    </div>
+                </div>
+
+                <!-- MAIN CHART WORKSPACE WITH DRAWING CANVAS & ORDER PANEL -->
+                <div class="flex-1 flex flex-col lg:flex-row overflow-hidden min-h-[680px]">
+                    
+                    <!-- CHART CONTAINER & DRAWING OVERLAY -->
+                    <div id="chart-main-wrapper" class="relative flex-1 flex flex-col border-r border-[#21262f] bg-[#111318]">
+                        <!-- Canvas area -->
+                        <div class="relative flex-1 min-h-[460px] bg-[#111318]">
+                            <div id="tv-chart-container" class="w-full h-full"></div>
+                        </div>
+
+                        <!-- KPI METRICS RIBBON -->
+                        <div class="bg-[#14171d] border-t border-b border-[#21262f] px-4 py-2 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2.5">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Balance</span>
+                                <span id="metric-balance" class="font-mono text-xs font-bold text-white">$10,000.00</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Net P&L</span>
+                                <span id="metric-net-profit" class="font-mono text-xs font-extrabold text-[#00ff66]">$0.00 (0.0%)</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Win Rate</span>
+                                <span id="metric-win-rate" class="font-mono text-xs font-bold text-white">0.0%</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Profit Factor</span>
+                                <span id="metric-profit-factor" class="font-mono text-xs font-bold text-[#00ff66]">0.00</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Sharpe</span>
+                                <span id="metric-sharpe" class="font-mono text-xs font-bold text-white">0.00</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Max DD</span>
+                                <span id="metric-drawdown" class="font-mono text-xs font-bold text-red-400">0.0%</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Trades</span>
+                                <span id="metric-trades-count" class="font-mono text-xs font-bold text-gray-300">0</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[9px] text-gray-400 font-bold uppercase">Avg Win/Loss</span>
+                                <span id="metric-avg-win-loss" class="font-mono text-[11px] font-semibold text-gray-300">+$0 / -$0</span>
+                            </div>
+                        </div>
+
+                        <!-- LOWER POSITIONS & EQUITY SPLIT VIEW -->
+                        <div class="h-56 bg-[#14171d] flex flex-col">
+                            <div class="px-3 py-1 border-b border-[#21262f] flex items-center justify-between text-xs bg-[#161920]">
+                                <div class="flex items-center space-x-3">
+                                    <span class="font-bold text-white flex items-center space-x-1.5">
+                                        <i data-lucide="layers" class="w-3.5 h-3.5 text-[#00ff66]"></i>
+                                        <span>Open Positions</span>
+                                        <span id="positions-count-badge" class="px-1.5 py-0.2 rounded-full text-[10px] bg-[#00ff66]/20 text-[#00ff66] font-mono">0</span>
+                                    </span>
+                                </div>
+                                <div class="flex items-center space-x-2">
+                                    <button id="btn-close-all" class="px-2 py-0.5 rounded bg-[#232832] hover:bg-[#ff3344]/20 hover:text-[#ff3344] text-gray-300 text-[11px] transition">
+                                        Close All
+                                    </button>
+                                    <button id="btn-export-csv" class="px-2 py-0.5 rounded bg-[#1c2028] hover:bg-[#252b35] text-gray-300 text-[11px] transition">
+                                        CSV
+                                    </button>
+                                    <button id="btn-export-json" class="px-2 py-0.5 rounded bg-[#1c2028] hover:bg-[#252b35] text-gray-300 text-[11px] transition">
+                                        JSON
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="flex-1 flex overflow-hidden">
+                                <div class="flex-1 overflow-y-auto border-r border-[#21262f]">
+                                    <table class="w-full text-left border-collapse">
+                                        <thead class="bg-[#111318] text-[9px] uppercase font-mono text-gray-500 sticky top-0 border-b border-[#21262f]">
+                                            <tr>
+                                                <th class="py-1 px-3">Ticket</th>
+                                                <th class="py-1 px-3">Symbol</th>
+                                                <th class="py-1 px-3">Side</th>
+                                                <th class="py-1 px-3">Lots</th>
+                                                <th class="py-1 px-3">Entry</th>
+                                                <th class="py-1 px-3">SL</th>
+                                                <th class="py-1 px-3">TP</th>
+                                                <th class="py-1 px-3">P&L</th>
+                                                <th class="py-1 px-3 text-right">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="positions-table-body">
+                                            <tr>
+                                                <td colspan="9" class="text-center py-4 text-gray-500 font-mono text-xs">
+                                                    No active open positions.
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                    <table class="w-full text-left border-collapse border-t border-[#21262f]">
+                                        <tbody id="history-table-body"></tbody>
+                                    </table>
+                                </div>
+
+                                <!-- Real-Time Equity Curve Canvas -->
+                                <div class="w-64 hidden md:flex flex-col bg-[#12141a] p-2">
+                                    <div class="flex items-center justify-between text-[10px] font-mono text-gray-400 mb-1">
+                                        <span class="flex items-center space-x-1">
+                                            <i data-lucide="trending-up" class="w-3 h-3 text-[#00ff66]"></i>
+                                            <span>Live Equity</span>
+                                        </span>
+                                        <span class="text-gray-500">Real-Time</span>
+                                    </div>
+                                    <div class="flex-1 relative w-full h-full rounded border border-[#21262f] overflow-hidden bg-[#0c0e12]">
+                                        <canvas id="equity-curve-canvas" class="w-full h-full"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RIGHT: ORDER EXECUTION TERMINAL PANEL -->
+                    <aside class="w-full lg:w-76 bg-[#15181e] flex flex-col p-3.5 space-y-3 flex-shrink-0 border-t lg:border-t-0 border-[#21262f]">
+                        <div class="flex items-center justify-between border-b border-[#232830] pb-2">
+                            <div class="flex items-center space-x-1.5">
+                                <i data-lucide="terminal" class="w-3.5 h-3.5 text-[#00ff66]"></i>
+                                <h3 class="text-xs font-bold text-white tracking-wide uppercase">Order Execution</h3>
+                            </div>
+                            <span class="text-[10px] font-mono text-[#00ff66]">MARKET FILL</span>
+                        </div>
+
+                        <!-- BUY / SELL Direction Tabs -->
+                        <div class="flex bg-[#111318] p-1 rounded-xl border border-[#232830] space-x-1">
+                            <button id="btn-side-buy" class="flex-1 py-1.5 rounded-lg font-bold text-xs bg-[#00ff66] text-black shadow-lg shadow-[#00ff66]/20 transition flex items-center justify-center space-x-1">
+                                <i data-lucide="arrow-up" class="w-3.5 h-3.5 stroke-[3]"></i>
+                                <span>BUY / LONG</span>
+                            </button>
+                            <button id="btn-side-sell" class="flex-1 py-1.5 rounded-lg font-semibold text-xs bg-[#1f242b] text-gray-400 hover:text-white transition flex items-center justify-center space-x-1">
+                                <i data-lucide="arrow-down" class="w-3.5 h-3.5 stroke-[3]"></i>
+                                <span>SELL / SHORT</span>
+                            </button>
+                        </div>
+
+                        <!-- Order Inputs Card -->
+                        <div class="space-y-2 bg-[#12141a] p-3 rounded-xl border border-[#232830]">
+                            <!-- Lot Sizing -->
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-400 font-medium mb-1">
+                                    <span>Volume / Lots</span>
+                                    <span class="font-mono text-gray-500">Contract Unit</span>
+                                </div>
+                                <div class="relative flex items-center">
+                                    <input id="order-lots" type="number" step="0.01" min="0.01" value="1.00" class="w-full bg-[#181c22] border border-[#2b323e] rounded-lg px-3 py-1.5 text-white font-mono font-bold text-sm focus:border-[#00ff66] focus:outline-none">
+                                    <span class="absolute right-3 text-xs text-gray-500 font-mono">LOTS</span>
+                                </div>
+                            </div>
+
+                            <!-- Auto Risk % Sizer -->
+                            <div>
+                                <div class="flex justify-between text-xs text-gray-400 font-medium mb-1">
+                                    <span>Risk (% Equity)</span>
+                                    <span class="font-mono text-gray-500">Auto Lot Sizer</span>
+                                </div>
+                                <div class="relative flex items-center">
+                                    <input id="order-risk-pct" type="number" step="0.5" min="0.5" max="100" placeholder="e.g. 1.0" class="w-full bg-[#181c22] border border-[#2b323e] rounded-lg px-3 py-1 text-white font-mono text-xs focus:border-[#00ff66] focus:outline-none">
+                                    <span class="absolute right-3 text-xs text-gray-500 font-mono">%</span>
+                                </div>
+                            </div>
+
+                            <!-- Stop Loss (SL) -->
+                            <div class="pt-0.5">
+                                <div class="flex justify-between items-center text-xs mb-1">
+                                    <label class="flex items-center space-x-1.5 cursor-pointer">
+                                        <input id="toggle-sl" type="checkbox" checked class="accent-[#ff3344] w-3.5 h-3.5 rounded">
+                                        <span class="font-semibold text-gray-300">Stop Loss</span>
+                                    </label>
+                                    <span id="order-est-loss" class="font-mono text-[11px] text-[#ff3344] font-bold">-$150.00</span>
+                                </div>
+                                <input id="order-sl" type="number" step="0.01" class="w-full bg-[#181c22] border border-[#2b323e] rounded-lg px-3 py-1 text-white font-mono text-xs focus:border-[#ff3344] focus:outline-none">
+                            </div>
+
+                            <!-- Take Profit (TP) -->
+                            <div>
+                                <div class="flex justify-between items-center text-xs mb-1">
+                                    <label class="flex items-center space-x-1.5 cursor-pointer">
+                                        <input id="toggle-tp" type="checkbox" checked class="accent-[#00ff66] w-3.5 h-3.5 rounded">
+                                        <span class="font-semibold text-gray-300">Take Profit</span>
+                                    </label>
+                                    <span id="order-est-profit" class="font-mono text-[11px] text-[#00ff66] font-bold">+$300.00</span>
+                                </div>
+                                <input id="order-tp" type="number" step="0.01" class="w-full bg-[#181c22] border border-[#2b323e] rounded-lg px-3 py-1 text-white font-mono text-xs focus:border-[#00ff66] focus:outline-none">
+                            </div>
+
+                            <!-- Risk:Reward Ratio Summary Pill -->
+                            <div class="p-2 rounded-lg bg-[#181c22] border border-[#232830] flex items-center justify-between text-xs font-mono">
+                                <span class="text-gray-400">Risk / Reward:</span>
+                                <span id="order-rr-preview" class="font-bold text-[#00ff66]">1 : 2.0</span>
+                            </div>
+                        </div>
+
+                        <!-- Big Execute Button -->
+                        <button id="btn-execute-order" class="w-full py-2.5 rounded-lg font-bold text-sm bg-[#00ff66] text-black shadow-lg hover:bg-[#1aff75] hover:shadow-[#00ff66]/40 transition uppercase tracking-wider flex items-center justify-center space-x-2">
+                            <i data-lucide="zap" class="w-4 h-4 fill-current"></i>
+                            <span>PLACE BUY (LONG) ORDER</span>
+                        </button>
+                    </aside>
+                </div>
+            </div>
+
+            <!-- OTHER NAVIGATION PANELS (Dashboard, Analytics, Reports, Trades, Notebook, Community) -->
+            <div id="view-dashboard" class="nav-view-panel hidden flex-1 flex-col p-6 space-y-6">
+                <div class="border-b border-[#21262f] pb-4">
+                    <h1 class="text-xl font-black text-white">Platform Dashboard</h1>
+                    <p class="text-xs text-gray-400">High-level quantitative summary across Forex & Binance crypto backtest sessions.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="p-4 rounded-xl bg-[#15181e] border border-[#232830]">
+                        <span class="text-xs font-mono text-gray-400 uppercase">Total Sessions</span>
+                        <div class="text-2xl font-mono font-bold text-white mt-1">4</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-[#15181e] border border-[#232830]">
+                        <span class="text-xs font-mono text-gray-400 uppercase">Trades Executed</span>
+                        <div class="text-2xl font-mono font-bold text-white mt-1">85</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-[#15181e] border border-[#232830]">
+                        <span class="text-xs font-mono text-gray-400 uppercase">Cumulative Net P&L</span>
+                        <div class="text-2xl font-mono font-bold text-[#00ff66] mt-1">+$10,950.00</div>
+                    </div>
+                    <div class="p-4 rounded-xl bg-[#15181e] border border-[#232830]">
+                        <span class="text-xs font-mono text-gray-400 uppercase">Average Win Rate</span>
+                        <div class="text-2xl font-mono font-bold text-white mt-1">65.8%</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-analytics" class="nav-view-panel hidden flex-1 flex-col p-6 space-y-6">
+                <div class="border-b border-[#21262f] pb-4">
+                    <h1 class="text-xl font-black text-white">Quantitative Analytics & Edge Report</h1>
+                    <p class="text-xs text-gray-400">Deep statistical metrics across market volatility regimes.</p>
+                </div>
+            </div>
+
+            <div id="view-notebook" class="nav-view-panel hidden flex-1 flex-col p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-[#21262f] pb-3">
+                    <h1 class="text-xl font-black text-white">Trader's Strategy Journal</h1>
+                </div>
+                <textarea class="flex-1 w-full p-4 rounded-xl bg-[#14171d] border border-[#232830] text-gray-200 font-mono text-xs focus:border-[#00ff66] focus:outline-none resize-none leading-relaxed" placeholder="# Strategy Notes..."></textarea>
+            </div>
+            
+            <div id="view-reports" class="nav-view-panel hidden flex-1 flex-col p-6">
+                <h1 class="text-xl font-black text-white mb-2">Reports</h1>
+            </div>
+            <div id="view-trades" class="nav-view-panel hidden flex-1 flex-col p-6">
+                <h1 class="text-xl font-black text-white mb-2">Trades Journal</h1>
+            </div>
+            <div id="view-community" class="nav-view-panel hidden flex-1 flex-col p-6">
+                <h1 class="text-xl font-black text-white mb-2">Community</h1>
+            </div>
+        </main>
+    </div>
+
+    <!-- ASSET PAIR SELECTION MODAL (FOREX & BINANCE CRYPTO) -->
+    <div id="asset-modal" class="modal-backdrop hidden">
+        <div class="modal-content p-5 max-w-lg">
+            <div class="flex items-center justify-between border-b border-[#262c36] pb-3 mb-3">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="search" class="w-4 h-4 text-[#00ff66]"></i>
+                    <h3 class="text-sm font-bold text-white">Select Trading Asset (Forex & Binance)</h3>
+                </div>
+                <button id="btn-close-asset-modal" class="p-1 rounded bg-[#1f242b] hover:bg-[#282f3a] text-gray-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <!-- Search input -->
+            <div class="relative mb-3">
+                <input id="asset-search-input" type="text" placeholder="Search pairs (e.g. EUR/USD, SOL/USDT, BTC)..." class="w-full bg-[#111317] border border-[#2b323e] rounded-lg px-3 py-2 text-white font-mono text-xs focus:border-[#00ff66] focus:outline-none">
+            </div>
+
+            <!-- Category Tabs: All, Forex, Crypto / Binance, Commodities -->
+            <div class="flex space-x-1 mb-3">
+                <button data-category="all" class="asset-cat-tab px-3 py-1 rounded text-xs font-semibold bg-[#00ff66]/15 text-[#00ff66] border border-[#00ff66]/40">All</button>
+                <button data-category="forex" class="asset-cat-tab px-3 py-1 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24]">Forex</button>
+                <button data-category="crypto" class="asset-cat-tab px-3 py-1 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24]">Binance Crypto</button>
+                <button data-category="commodities" class="asset-cat-tab px-3 py-1 rounded text-xs font-semibold text-gray-400 hover:text-white bg-[#1a1e24]">Commodities</button>
+            </div>
+
+            <!-- Asset List Container -->
+            <div id="asset-list-container" class="space-y-2 max-h-80 overflow-y-auto pr-1"></div>
+        </div>
+    </div>
+
+    <!-- INDICATORS & LUXALGO SESSIONS MODAL -->
+    <div id="indicators-modal" class="modal-backdrop hidden">
+        <div class="modal-content p-5 max-w-md">
+            <div class="flex items-center justify-between border-b border-[#262c36] pb-3 mb-4">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="layers" class="w-4 h-4 text-[#00ff66]"></i>
+                    <h3 class="text-sm font-bold text-white">Indicator Overlays & Session Controls</h3>
+                </div>
+                <button id="btn-close-indicators" class="p-1 rounded bg-[#1f242b] hover:bg-[#282f3a] text-gray-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3.5 max-h-96 overflow-y-auto pr-1 text-xs">
+                <!-- Moving Averages -->
+                <div class="p-3 rounded-lg bg-[#121418] border border-[#242a34] space-y-2">
+                    <span class="font-bold text-white block uppercase text-[10px] tracking-wider text-gray-400">Moving Averages</span>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#00ff66]"></span>
+                            <span>EMA 20 (Trend Momentum)</span>
+                        </span>
+                        <input type="checkbox" data-indicator="ema20" class="indicator-checkbox accent-[#00ff66] w-4 h-4 rounded">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#38bdf8]"></span>
+                            <span>EMA 50 (Intermediate Trend)</span>
+                        </span>
+                        <input type="checkbox" data-indicator="ema50" class="indicator-checkbox accent-[#00ff66] w-4 h-4 rounded">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#a855f7]"></span>
+                            <span>EMA 200 (Macro Baseline)</span>
+                        </span>
+                        <input type="checkbox" data-indicator="ema200" class="indicator-checkbox accent-[#00ff66] w-4 h-4 rounded">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#fbbf24]"></span>
+                            <span>SMA 50 (Simple Moving Average)</span>
+                        </span>
+                        <input type="checkbox" data-indicator="sma50" class="indicator-checkbox accent-[#00ff66] w-4 h-4 rounded">
+                    </label>
+                </div>
+
+                <!-- Volatility & Volume Profile -->
+                <div class="p-3 rounded-lg bg-[#121418] border border-[#242a34] space-y-2">
+                    <span class="font-bold text-white block uppercase text-[10px] tracking-wider text-gray-400">Volatility & Profile</span>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#ec4899]"></span>
+                            <span>Bollinger Bands (20, 2)</span>
+                        </span>
+                        <input type="checkbox" data-indicator="bollinger" class="indicator-checkbox accent-[#00ff66] w-4 h-4 rounded">
+                    </label>
+                    <label class="flex items-center justify-between cursor-pointer">
+                        <span class="flex items-center space-x-2">
+                            <span class="w-2.5 h-2.5 rounded-full bg-[#ff3344]"></span>
+                            <span>Volume Profile (Visible Range & POC)</span>
+                        </span>
+                        <input type="checkbox" data-indicator="volumeProfile" class="indicator-checkbox accent-[#00ff66] w-4 h-4 rounded">
+                    </label>
+                </div>
+
+                <!-- LuxAlgo Trading Sessions Box -->
+                <div class="p-3 rounded-lg bg-[#121418] border border-[#242a34] space-y-2">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="font-bold text-white uppercase text-[10px] tracking-wider text-gray-400">LuxAlgo Trading Sessions</span>
+                        <input type="checkbox" data-indicator="sessions" class="indicator-checkbox accent-[#00ff66] w-4 h-4 rounded">
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[11px] pt-1 border-t border-[#232832]">
+                        <span class="flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-[#38bdf8]"></span><span>London (08-16 UTC)</span></span>
+                        <span class="flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-[#f59e0b]"></span><span>New York (13-21 UTC)</span></span>
+                        <span class="flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-[#a855f7]"></span><span>Tokyo (00-08 UTC)</span></span>
+                        <span class="flex items-center space-x-1.5"><span class="w-2 h-2 rounded-full bg-[#10b981]"></span><span>Sydney (21-05 UTC)</span></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AI COPILOT SLIDE-OUT / FLOATING PANEL -->
+    <div id="ai-copilot-panel" class="fixed top-14 right-4 z-50 w-88 bg-[#15181e] border border-[#282f3a] rounded-xl shadow-2xl overflow-hidden hidden flex flex-col">
+        <div class="p-3 bg-[#111317] border-b border-[#232830] flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+                <i data-lucide="sparkles" class="w-4 h-4 text-[#00ff66]"></i>
+                <h3 class="text-xs font-bold text-white uppercase tracking-wider">AI Trading Copilot</h3>
+            </div>
+            <button id="btn-close-ai-panel" class="p-1 rounded bg-[#1f242b] hover:bg-[#282f3a] text-gray-400 hover:text-white transition">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+            </button>
+        </div>
+
+        <!-- AI Tabs -->
+        <div class="flex border-b border-[#232830] bg-[#13161c]">
+            <button data-ai-tab="analyzer" class="ai-tab-btn flex-1 py-1.5 text-xs font-bold text-[#00ff66] border-b-2 border-[#00ff66]">Trade Analyzer</button>
+            <button data-ai-tab="patterns" class="ai-tab-btn flex-1 py-1.5 text-xs font-semibold text-gray-400 hover:text-white border-b-2 border-transparent">Patterns</button>
+            <button data-ai-tab="optimizer" class="ai-tab-btn flex-1 py-1.5 text-xs font-semibold text-gray-400 hover:text-white border-b-2 border-transparent">Optimizer</button>
+        </div>
+
+        <div class="p-3.5 max-h-[440px] overflow-y-auto space-y-3">
+            <!-- TAB 1: AI Trade Analyzer -->
+            <div id="ai-tab-analyzer" class="ai-tab-content space-y-3">
+                <div class="p-3 rounded-lg bg-[#111317] border border-[#232830]">
+                    <span class="text-[10px] text-gray-400 uppercase font-mono block">AI Verdict</span>
+                    <div id="ai-verdict-title" class="text-xs font-bold text-[#00ff66] mt-0.5">FAVORABLE TRADE SETUP</div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+                    <div class="p-2 rounded bg-[#111317] border border-[#232830]">
+                        <span class="text-[10px] text-gray-500 block">WIN PROB</span>
+                        <span id="ai-win-prob" class="font-bold text-[#00ff66]">68%</span>
+                    </div>
+                    <div class="p-2 rounded bg-[#111317] border border-[#232830]">
+                        <span class="text-[10px] text-gray-500 block">R:R SCORE</span>
+                        <span id="ai-rr-score" class="font-bold text-white">1 : 2.0</span>
+                    </div>
+                    <div class="p-2 rounded bg-[#111317] border border-[#232830]">
+                        <span class="text-[10px] text-gray-500 block">RISK LEVEL</span>
+                        <span id="ai-risk-level" class="font-bold text-cyan-400">LOW</span>
+                    </div>
+                </div>
+
+                <ul id="ai-recommendations-list" class="space-y-1.5"></ul>
+                <button id="btn-run-ai-analysis" class="w-full py-2 rounded-lg bg-[#1a1e24] hover:bg-[#252b34] text-white border border-[#2c3442] text-xs font-semibold transition">
+                    Re-Analyze Active Setup
+                </button>
+            </div>
+
+            <!-- TAB 2: Pattern Recognition -->
+            <div id="ai-tab-patterns" class="ai-tab-content hidden space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-400">Market Sentiment:</span>
+                    <span id="ai-sentiment-badge" class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-[#00ff66]/15 text-[#00ff66]">BULLISH (74%)</span>
+                </div>
+                <div id="ai-patterns-list" class="space-y-2"></div>
+                <button id="btn-run-pattern-scan" class="w-full py-2 rounded-lg bg-[#1a1e24] hover:bg-[#252b34] text-white border border-[#2c3442] text-xs font-semibold transition">
+                    Run Fresh Pattern Scan
+                </button>
+            </div>
+
+            <!-- TAB 3: Strategy Optimizer -->
+            <div id="ai-tab-optimizer" class="ai-tab-content hidden space-y-3">
+                <div class="space-y-1.5 text-xs font-mono bg-[#111317] p-3 rounded-lg border border-[#232830]">
+                    <div class="flex justify-between"><span>Entry:</span><strong id="ai-opt-entry" class="text-white">-</strong></div>
+                    <div class="flex justify-between"><span>Stop Loss:</span><strong id="ai-opt-sl" class="text-[#ff3344]">-</strong></div>
+                    <div class="flex justify-between"><span>Target 1 (50%):</span><strong id="ai-opt-tp1" class="text-[#00ff66]">-</strong></div>
+                    <div class="flex justify-between"><span>Target 2 (Runner):</span><strong id="ai-opt-tp2" class="text-[#00ff66]">-</strong></div>
+                </div>
+                <p id="ai-opt-trailing" class="text-[11px] text-gray-400 leading-relaxed"></p>
+                <div class="flex space-x-2">
+                    <button id="btn-run-optimizer" class="flex-1 py-2 rounded-lg bg-[#1a1e24] hover:bg-[#252b34] text-white text-xs font-semibold transition">
+                        Recalculate
+                    </button>
+                    <button id="btn-apply-ai-setup" class="flex-1 py-2 rounded-lg bg-[#00ff66] text-black font-bold text-xs shadow transition">
+                        Apply to Order
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHART THEME CUSTOMIZATION MODAL -->
+    <div id="settings-modal" class="modal-backdrop hidden">
+        <div class="modal-content p-6">
+            <div class="flex items-center justify-between border-b border-[#262c36] pb-3 mb-4">
+                <h3 class="text-base font-bold text-white">Chart Theme & Colors</h3>
+                <button id="btn-close-settings" class="p-1 rounded bg-[#1f242b] hover:bg-[#282f3a] text-gray-400 hover:text-white transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-400">Customize candlesticks, background themes, and grid lines.</p>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col space-y-2 pointer-events-none w-80"></div>
+
+    <!-- SCRIPTS -->
+    <script src="data/market_data.js"></script>
+    <script src="js/sessions.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/indicators.js"></script>
+    <script src="js/ai_tools.js"></script>
+    <script src="js/chart.js"></script>
+    <script src="js/drawing.js"></script>
+    <script src="js/replay.js"></script>
+    <script src="js/trading.js"></script>
+    <script src="js/analytics.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>

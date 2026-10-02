@@ -1,0 +1,26 @@
+{
+  "name": "retrotrade-lab",
+  "version": "1.0.0",
+  "description": "Professional trading backtesting and market data analysis web application for XAU/USD and BTC/USD.",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js"
+  },
+  "keywords": [
+    "trading",
+    "backtesting",
+    "tradingview",
+    "lightweight-charts",
+    "replay",
+    "gold",
+    "bitcoin",
+    "crypto",
+    "forex"
+  ],
+  "author": "RetroTrade Lab",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}
